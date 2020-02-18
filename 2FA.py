@@ -1,6 +1,7 @@
 import os
 import cmd
 import crypt
+import shutil
 
 
 def _check_your_privilege():
@@ -14,34 +15,56 @@ def _exists(username):
         return username in usernames
 
 
-#TODO
-def _update_shadow_file(username, password, token):
-    pass
+def _create_shadow_file_entry(username, password, token, user_id, group_id):
+    hardened_password = password + token
+    hash_ = crypt.crypt(hardened_password, '$6$' + salt)
+
+    line = '%s:%s:%s' % (username, hash_, 'TODO') #TODO
+    #TODO: Write into file
 
 
-#TODO
-def _update_password_file(username):
-    pass
+def _create_password_file_entry(username, user_id, group_id):
+    user_id = 1234
+    group_id = 1234
+
+    home_directory_path = '/home/%s' % username
+    bash_path = '/bin/bash'
+
+    line = '%s:%s:%d:%d:%s:%s:%s' % (username, 'x', user_id, group_id, username + ',,,', home_directory_path, bash_path)
+    #TODO: Write into file
 
 
-#TODO
 def _create_home_directory(username):
+    home_directory_path = '/home/%s' % username
+
+    try:
+        os.makedirs(home_directory_path)
+    except:
+        pass
+
+
+#TODO
+def _delete_shadow_file_entry(username):
     pass
 
 
-def _create_user(username, password, salt, token):
-    exists = _exists(username)
+#TODO
+def _delete_password_file_entry(username):
+    pass
 
-    if exists:
-        message = 'FAILURE: user <%s> already exists' % username
-        raise Exception(message)
 
-    _update_shadow_file(username, password, token)
-    _update_password_file(username, password, token)
+def _delete_home_directory(username):
+    home_directory_path = '/home/%s' % username
 
-    _create_home_directory(username)
+    try:
+        shutil.rmtree(home_directory_path)
+    except:
+        pass
 
-    return 65534
+
+def _update_shadow_file_entry(username, password, token):
+    user_id, group_id = _delete_shadow_file_entry(username)
+    _create_shadow_file_entry(username, password, token, user_id, group_id)
 
 
 def _check_username(username):
@@ -62,7 +85,8 @@ def _validate_credentials(username, password, token):
                 credentials = split_entry[1]
                 _1, _2, salt = credentials.split('$')
 
-                result = 'CHANGE_ME' #TODO
+                hardened_password = password + token
+                result = crypt.crypt(hardened_password, '$6$' + salt)
                 return result == credentials
 
 
@@ -70,28 +94,44 @@ def _login(username, password, current_token, next_token):
     valid_credentials = _validate_credentials(username, password, current_token)
 
     if valid_credentials:
-        _update_shadow_file(username, password, next_token)
+        _update_shadow_file_entry(username, password, next_token)
+    else:
+        message = 'FAILURE: <%s/%s> incorrect' % (password, current_token)
+        raise Exception(message)
+
+
+def _create_user(username, password, salt, token, user_id=None, group_id=None):
+    exists = _exists(username)
+
+    if exists:
+        message = 'FAILURE: user <%s> already exists' % username
+        raise Exception(message)
+
+    user_id = user_id if user_id else _generate_user_id()
+    group_id = group_id if group_id else _generate_group_id()
+
+    _create_shadow_file_entry(username, password, token, user_id, group_id)
+    _create_password_file_entry(username, password, token, user_id, group_id)
+
+    return 65534
+
+
+def _delete_user(username, password, token):
+    valid_credentials = _validate_credentials(username, password, token)
+
+    if valid_credentials:
+        _delete_shadow_file_entry(username)
+        _delete_password_file_entry(username)
+
+        return user_id, group_id
     else:
         message = 'FAILURE: <%s/%s> incorrect' % (password, current_token)
         raise Exception(message)
 
 
 def _update_user(username, password, new_password, new_salt, current_token, next_token):
-    _delete_user(username, password, current_token)
+    _delete_user(username, password, current_token) #TODO: Have to reuse user id + group id
     _create_user(username, new_password, new_salt, next_token)
-
-
-#TODO
-def _delete_user(username, password, token):
-    valid_credentials = _validate_credentials(username, password, token)
-
-    if valid_credentials:
-        _delete_shadow_file(username)
-        _delete_password_file(username)
-        _delete_home_directory(username)
-    else:
-        message = 'FAILURE: <%s/%s> incorrect' % (password, current_token)
-        raise Exception(message)
 
 
 class TwoFactorAuthentication(cmd.Cmd):
@@ -106,6 +146,7 @@ class TwoFactorAuthentication(cmd.Cmd):
             token = input('initial token: ')
 
             user_id = _create_user(username, password, salt, token)
+            _create_home_directory(username)
 
         except Exception as e:
             print(str(e))
@@ -128,7 +169,6 @@ class TwoFactorAuthentication(cmd.Cmd):
             next_token = input('next token: ')
 
             _login(username, password, current_token)
-            _update_shadow_file(username, password, next_token)
         except Exception as e:
             print(str(e))
         else:
@@ -171,6 +211,7 @@ class TwoFactorAuthentication(cmd.Cmd):
             current_token = input('current token: ')
 
             _delete_user(username, password, current_token)
+            _delete_home_directory(username)
         except Exception as e:
             print(str(e))
         else:
