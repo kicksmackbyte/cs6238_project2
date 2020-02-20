@@ -46,14 +46,32 @@ def _create_home_directory(username):
         pass
 
 
-#TODO
 def _delete_shadow_file_entry(username):
-    pass
+    with open('/etc/shadow', 'r+') as shadow_file:
+        lines = shadow_file.readlines()
+        shadow_file.seek(0)
+
+        for line in lines:
+            entry_username = line.split(':')[0]
+
+            if entry_username != username:
+                shadow_file.write(line)
+
+        shadow_file.truncate()
 
 
-#TODO
 def _delete_password_file_entry(username):
-    pass
+    with open('/etc/passwd', 'r+') as shadow_file:
+        lines = shadow_file.readlines()
+        shadow_file.seek(0)
+
+        for line in lines:
+            entry_username = line.split(':')[0]
+
+            if entry_username != username:
+                shadow_file.write(line)
+
+        shadow_file.truncate()
 
 
 def _delete_home_directory(username):
@@ -65,9 +83,27 @@ def _delete_home_directory(username):
         pass
 
 
-#TODO
-def _update_shadow_file_entry(username, password, token, salt=None):
-    pass
+def _update_shadow_file_entry(username, password, token, new_salt=None):
+    with open('/etc/shadow', 'r+') as shadow_file:
+        lines = shadow_file.readlines()
+        shadow_file.seek(0)
+
+        for line in lines:
+            entry_username = line.split(':')[0]
+
+            if entry_username != username:
+                shadow_file.write(line)
+            else:
+                salt = new_salt if new_salt else line.split(':')[1].split('$')[2]
+                last_changed = (datetime.utcnow() - datetime(1970, 1, 1)).days if new_salt else line.split(':')[2]
+
+                hardened_password = password + token
+                hash_ = crypt.crypt(hardened_password, '$6$' + salt)
+
+                line = '%s:%s:%d:%d:%d:%d:::\n' % (username, hash_, last_changed, 0, 99999, 7)
+                shadow_file.write(line)
+
+        shadow_file.truncate()
 
 
 def _check_username_exists(username):
