@@ -5,19 +5,23 @@ import shutil
 from datetime import datetime
 
 
+SHADOW_FILE_PATH = '/etc/shadow'
+PASSWORD_FILE_PATH = '/etc/passwd'
+
+
 def _check_your_privilege():
     if os.getuid() != 0:
         raise Exception("Please, run as root.")
 
 
 def _exists(username):
-    with open('/etc/shadow', 'r') as shadow_file:
+    with open(SHADOW_FILE_PATH, 'r') as shadow_file:
         usernames = [entry.split(':')[0] for entry in shadow_file]
         return username in usernames
 
 
 def _create_shadow_file_entry(username, password, token, user_id, group_id):
-    with open("/etc/shadow", "a+") as shadow_file:
+    with open(SHADOW_FILE_PATH, "a+") as shadow_file:
         hardened_password = password + token
         hash_ = crypt.crypt(hardened_password, '$6$' + salt)
         last_changed = (datetime.utcnow() - datetime(1970, 1, 1)).days
@@ -28,7 +32,7 @@ def _create_shadow_file_entry(username, password, token, user_id, group_id):
 
 
 def _create_password_file_entry(username, user_id, group_id):
-    with open("/etc/passwd", "a+") as password_file:
+    with open(PASSWORD_FILE_PATH, "a+") as password_file:
         home_directory_path = '/home/%s' % username
         bash_path = '/bin/bash'
 
@@ -47,7 +51,7 @@ def _create_home_directory(username):
 
 
 def _delete_shadow_file_entry(username):
-    with open('/etc/shadow', 'r+') as shadow_file:
+    with open(SHADOW_FILE_PATH, 'r+') as shadow_file:
         lines = shadow_file.readlines()
         shadow_file.seek(0)
 
@@ -61,7 +65,7 @@ def _delete_shadow_file_entry(username):
 
 
 def _delete_password_file_entry(username):
-    with open('/etc/passwd', 'r+') as shadow_file:
+    with open(PASSWORD_FILE_PATH, 'r+') as shadow_file:
         lines = shadow_file.readlines()
         shadow_file.seek(0)
 
@@ -84,7 +88,7 @@ def _delete_home_directory(username):
 
 
 def _update_shadow_file_entry(username, password, token, new_salt=None):
-    with open('/etc/shadow', 'r+') as shadow_file:
+    with open(SHADOW_FILE_PATH, 'r+') as shadow_file:
         lines = shadow_file.readlines()
         shadow_file.seek(0)
 
@@ -115,7 +119,7 @@ def _check_username_exists(username):
 
 
 def _validate_credentials(username, password, token):
-    with open('/etc/shadow', 'r') as shadow_file:
+    with open(SHADOW_FILE_PATH, 'r') as shadow_file:
         for entry in shadow_file:
             split_entry = entry.split(':')
             entry_username = split_entry[0]
@@ -140,7 +144,7 @@ def _login(username, password, current_token, next_token):
 
 
 def _generate_user_id():
-    with open('/etc/passwd', 'r') as password_file:
+    with open(PASSWORD_FILE_PATH, 'r') as password_file:
         user_id = 1000
 
         for line in password_file:
