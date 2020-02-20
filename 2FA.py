@@ -2,6 +2,7 @@ import os
 import cmd
 import crypt
 import shutil
+from datetime import datetime
 
 
 def _check_your_privilege():
@@ -16,22 +17,24 @@ def _exists(username):
 
 
 def _create_shadow_file_entry(username, password, token, user_id, group_id):
-    hardened_password = password + token
-    hash_ = crypt.crypt(hardened_password, '$6$' + salt)
+    with open("/etc/shadow", "a+") as shadow_file:
+        hardened_password = password + token
+        hash_ = crypt.crypt(hardened_password, '$6$' + salt)
+        last_changed = (datetime.utcnow() - datetime(1970, 1, 1)).days
 
-    line = '%s:%s:%s' % (username, hash_, 'TODO') #TODO
-    #TODO: Write into file
+        line = '%s:%s:%d:%d:%d:%d:::\n' % (username, hash_, last_changed, 0, 99999, 7)
+
+        password_file.write(line)
 
 
 def _create_password_file_entry(username, user_id, group_id):
-    user_id = 1234
-    group_id = 1234
+    with open("/etc/passwd", "a+") as password_file:
+        home_directory_path = '/home/%s' % username
+        bash_path = '/bin/bash'
 
-    home_directory_path = '/home/%s' % username
-    bash_path = '/bin/bash'
+        line = '%s:%s:%d:%d:%s:%s:%s\n' % (username, 'x', user_id, group_id, ',,,', home_directory_path, bash_path)
 
-    line = '%s:%s:%d:%d:%s:%s:%s' % (username, 'x', user_id, group_id, username + ',,,', home_directory_path, bash_path)
-    #TODO: Write into file
+        password_file.write(line)
 
 
 def _create_home_directory(username):
@@ -63,7 +66,7 @@ def _delete_home_directory(username):
 
 
 #TODO
-def _update_shadow_file_entry(username, token, password=None, salt=None):
+def _update_shadow_file_entry(username, password, token, salt=None):
     pass
 
 
@@ -94,20 +97,24 @@ def _login(username, password, current_token, next_token):
     valid_credentials = _validate_credentials(username, password, current_token)
 
     if valid_credentials:
-        _update_shadow_file_entry(username, next_token)
+        _update_shadow_file_entry(username, password, next_token)
     else:
         message = 'FAILURE: <%s/%s> incorrect' % (password, current_token)
         raise Exception(message)
 
 
-#TODO
 def _generate_user_id():
-    pass
+    with open('/etc/passwd', 'r') as password_file:
+        user_id = 1000
 
+        for line in password_file:
+            entries = line.split(':')
+            last_user_id = int(entries[3])
 
-#TODO
-def _generate_group_id():
-    pass
+            while (last_user_id >= user_id) and (last_user_id < 65534):
+                user_id = last_user_id + 1
+
+        return user_id
 
 
 def _create_user(username, password, salt, token):
@@ -118,7 +125,7 @@ def _create_user(username, password, salt, token):
         raise Exception(message)
 
     user_id = _generate_user_id()
-    group_id = _generate_group_id()
+    group_id = user_id
 
     _create_shadow_file_entry(username, password, token, user_id, group_id)
     _create_password_file_entry(username, password, token, user_id, group_id)
@@ -141,7 +148,7 @@ def _update_user(username, password, new_password, new_salt, current_token, next
     valid_credentials = _validate_credentials(username, password, current_token)
 
     if valid_credentials:
-        _update_shadow_file_entry(username, next_token, password=new_password, salt=new_salt)
+        _update_shadow_file_entry(username, password, next_token, salt=new_salt)
     else:
         message = 'FAILURE: <%s/%s> incorrect' % (password, current_token)
         raise Exception(message)
