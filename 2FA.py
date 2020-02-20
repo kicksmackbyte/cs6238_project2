@@ -62,12 +62,12 @@ def _delete_home_directory(username):
         pass
 
 
-def _update_shadow_file_entry(username, password, token):
-    user_id, group_id = _delete_shadow_file_entry(username)
-    _create_shadow_file_entry(username, password, token, user_id, group_id)
+#TODO
+def _update_shadow_file_entry(username, token, password=None, salt=None):
+    pass
 
 
-def _check_username(username):
+def _check_username_exists(username):
     exists = _exists(username)
 
     if not exists:
@@ -94,26 +94,36 @@ def _login(username, password, current_token, next_token):
     valid_credentials = _validate_credentials(username, password, current_token)
 
     if valid_credentials:
-        _update_shadow_file_entry(username, password, next_token)
+        _update_shadow_file_entry(username, next_token)
     else:
         message = 'FAILURE: <%s/%s> incorrect' % (password, current_token)
         raise Exception(message)
 
 
-def _create_user(username, password, salt, token, user_id=None, group_id=None):
+#TODO
+def _generate_user_id():
+    pass
+
+
+#TODO
+def _generate_group_id():
+    pass
+
+
+def _create_user(username, password, salt, token):
     exists = _exists(username)
 
     if exists:
         message = 'FAILURE: user <%s> already exists' % username
         raise Exception(message)
 
-    user_id = user_id if user_id else _generate_user_id()
-    group_id = group_id if group_id else _generate_group_id()
+    user_id = _generate_user_id()
+    group_id = _generate_group_id()
 
     _create_shadow_file_entry(username, password, token, user_id, group_id)
     _create_password_file_entry(username, password, token, user_id, group_id)
 
-    return 65534
+    return user_id
 
 
 def _delete_user(username, password, token):
@@ -122,16 +132,19 @@ def _delete_user(username, password, token):
     if valid_credentials:
         _delete_shadow_file_entry(username)
         _delete_password_file_entry(username)
-
-        return user_id, group_id
     else:
         message = 'FAILURE: <%s/%s> incorrect' % (password, current_token)
         raise Exception(message)
 
 
 def _update_user(username, password, new_password, new_salt, current_token, next_token):
-    _delete_user(username, password, current_token) #TODO: Have to reuse user id + group id
-    _create_user(username, new_password, new_salt, next_token)
+    valid_credentials = _validate_credentials(username, password, current_token)
+
+    if valid_credentials:
+        _update_shadow_file_entry(username, next_token, password=new_password, salt=new_salt)
+    else:
+        message = 'FAILURE: <%s/%s> incorrect' % (password, current_token)
+        raise Exception(message)
 
 
 class TwoFactorAuthentication(cmd.Cmd):
@@ -162,7 +175,7 @@ class TwoFactorAuthentication(cmd.Cmd):
     def do_2(self, line):
         try:
             username = input('username: ')
-            _check_username(username)
+            _check_username_exists(username)
 
             password = input('password: ')
             current_token = input('current token: ')
@@ -182,7 +195,7 @@ class TwoFactorAuthentication(cmd.Cmd):
     def do_3(self, line):
         try:
             username = input('username: ')
-            _check_username(username)
+            _check_username_exists(username)
 
             password = input('password: ')
             new_password = input('new_password: ')
@@ -205,7 +218,7 @@ class TwoFactorAuthentication(cmd.Cmd):
     def do_4(self, line):
         try:
             username = input('username: ')
-            _check_username(username)
+            _check_username_exists(username)
 
             password = input('password: ')
             current_token = input('current token: ')
