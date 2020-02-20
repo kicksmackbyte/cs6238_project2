@@ -5,8 +5,8 @@ import shutil
 from datetime import datetime
 
 
-SHADOW_FILE_PATH = '/etc/shadow'
-PASSWORD_FILE_PATH = '/etc/passwd'
+SHADOW_FILE_PATH = '/home/cs6238/shadow'
+PASSWORD_FILE_PATH = '/home/cs6238/passwd'
 
 
 def _check_your_privilege():
@@ -20,7 +20,7 @@ def _exists(username):
         return username in usernames
 
 
-def _create_shadow_file_entry(username, password, token, user_id, group_id):
+def _create_shadow_file_entry(username, password, token, salt, user_id, group_id):
     with open(SHADOW_FILE_PATH, "a+") as shadow_file:
         hardened_password = password + token
         hash_ = crypt.crypt(hardened_password, '$6$' + salt)
@@ -167,8 +167,8 @@ def _create_user(username, password, salt, token):
     user_id = _generate_user_id()
     group_id = user_id
 
-    _create_shadow_file_entry(username, password, token, user_id, group_id)
-    _create_password_file_entry(username, password, token, user_id, group_id)
+    _create_shadow_file_entry(username, password, token, salt, user_id, group_id)
+    _create_password_file_entry(username, user_id, group_id)
 
     return user_id
 
@@ -200,10 +200,10 @@ class TwoFactorAuthentication(cmd.Cmd):
 
     def do_1(self, line):
         try:
-            username = input('username: ')
-            password = input('password: ')
-            salt = input('salt: ')
-            token = input('initial token: ')
+            username = raw_input('username: ')
+            password = raw_input('password: ')
+            salt = raw_input('salt: ')
+            token = raw_input('initial token: ')
 
             user_id = _create_user(username, password, salt, token)
             _create_home_directory(username)
@@ -221,12 +221,12 @@ class TwoFactorAuthentication(cmd.Cmd):
 
     def do_2(self, line):
         try:
-            username = input('username: ')
+            username = raw_input('username: ')
             _check_username_exists(username)
 
-            password = input('password: ')
-            current_token = input('current token: ')
-            next_token = input('next token: ')
+            password = raw_input('password: ')
+            current_token = raw_input('current token: ')
+            next_token = raw_input('next token: ')
 
             _login(username, password, current_token)
         except Exception as e:
@@ -241,14 +241,14 @@ class TwoFactorAuthentication(cmd.Cmd):
 
     def do_3(self, line):
         try:
-            username = input('username: ')
+            username = raw_input('username: ')
             _check_username_exists(username)
 
-            password = input('password: ')
-            new_password = input('new_password: ')
-            new_salt = input('new_salt: ')
-            current_token = input('current token: ')
-            next_token = input('next token: ')
+            password = raw_input('password: ')
+            new_password = raw_input('new_password: ')
+            new_salt = raw_input('new_salt: ')
+            current_token = raw_input('current token: ')
+            next_token = raw_input('next token: ')
 
             _update_user(username, password, new_password, new_salt, current_token, next_token)
         except Exception as e:
@@ -264,11 +264,11 @@ class TwoFactorAuthentication(cmd.Cmd):
 
     def do_4(self, line):
         try:
-            username = input('username: ')
+            username = raw_input('username: ')
             _check_username_exists(username)
 
-            password = input('password: ')
-            current_token = input('current token: ')
+            password = raw_input('password: ')
+            current_token = raw_input('current token: ')
 
             _delete_user(username, password, current_token)
             _delete_home_directory(username)
