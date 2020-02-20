@@ -28,7 +28,7 @@ def _create_shadow_file_entry(username, password, token, salt, user_id, group_id
 
         line = '%s:%s:%d:%d:%d:%d:::\n' % (username, hash_, last_changed, 0, 99999, 7)
 
-        password_file.write(line)
+        shadow_file.write(line)
 
 
 def _create_password_file_entry(username, user_id, group_id):
@@ -65,17 +65,17 @@ def _delete_shadow_file_entry(username):
 
 
 def _delete_password_file_entry(username):
-    with open(PASSWORD_FILE_PATH, 'r+') as shadow_file:
-        lines = shadow_file.readlines()
-        shadow_file.seek(0)
+    with open(PASSWORD_FILE_PATH, 'r+') as password_file:
+        lines = password_file.readlines()
+        password_file.seek(0)
 
         for line in lines:
             entry_username = line.split(':')[0]
 
             if entry_username != username:
-                shadow_file.write(line)
+                password_file.write(line)
 
-        shadow_file.truncate()
+        password_file.truncate()
 
 
 def _delete_home_directory(username):
