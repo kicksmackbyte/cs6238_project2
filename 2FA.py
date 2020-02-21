@@ -104,7 +104,7 @@ def _update_shadow_file_entry(username, password, token, new_salt=None):
                 hardened_password = password + token
                 hash_ = crypt.crypt(hardened_password, '$6$' + salt)
 
-                line = '%s:%s:%d:%d:%d:%d:::\n' % (username, hash_, last_changed, 0, 99999, 7)
+                line = '%s:%s:%d:%d:%d:%d:::\n' % (username, hash_, int(last_changed), 0, 99999, 7)
                 shadow_file.write(line)
 
         shadow_file.truncate()
@@ -126,7 +126,7 @@ def _validate_credentials(username, password, token):
 
             if username == entry_username:
                 credentials = split_entry[1]
-                _1, _2, salt = credentials.split('$')
+                _1, _2, salt, _3 = credentials.split('$')
 
                 hardened_password = password + token
                 result = crypt.crypt(hardened_password, '$6$' + salt)
@@ -188,7 +188,7 @@ def _update_user(username, password, new_password, new_salt, current_token, next
     valid_credentials = _validate_credentials(username, password, current_token)
 
     if valid_credentials:
-        _update_shadow_file_entry(username, password, next_token, salt=new_salt)
+        _update_shadow_file_entry(username, password, next_token, new_salt=new_salt)
     else:
         message = 'FAILURE: <%s/%s> incorrect' % (password, current_token)
         raise Exception(message)
@@ -228,7 +228,7 @@ class TwoFactorAuthentication(cmd.Cmd):
             current_token = raw_input('current token: ')
             next_token = raw_input('next token: ')
 
-            _login(username, password, current_token)
+            _login(username, password, current_token, next_token)
         except Exception as e:
             print(str(e))
         else:
