@@ -41,11 +41,12 @@ def _create_password_file_entry(username, user_id, group_id):
         password_file.write(line)
 
 
-def _create_home_directory(username):
+def _create_home_directory(username, user_id, group_id):
     home_directory_path = '/home/%s' % username
 
     try:
         os.makedirs(home_directory_path)
+        os.chown(home_directory_path, user_id, group_id)
     except:
         pass
 
@@ -170,7 +171,7 @@ def _create_user(username, password, salt, token):
     _create_shadow_file_entry(username, password, token, salt, user_id, group_id)
     _create_password_file_entry(username, user_id, group_id)
 
-    return user_id
+    return user_id, group_id
 
 
 def _delete_user(username, password, token):
@@ -188,7 +189,7 @@ def _update_user(username, password, new_password, new_salt, current_token, next
     valid_credentials = _validate_credentials(username, password, current_token)
 
     if valid_credentials:
-        _update_shadow_file_entry(username, password, next_token, new_salt=new_salt)
+        _update_shadow_file_entry(username, new_password, next_token, new_salt=new_salt)
     else:
         message = 'FAILURE: <%s/%s> incorrect' % (password, current_token)
         raise Exception(message)
@@ -205,8 +206,8 @@ class TwoFactorAuthentication(cmd.Cmd):
             salt = raw_input('salt: ')
             token = raw_input('initial token: ')
 
-            user_id = _create_user(username, password, salt, token)
-            _create_home_directory(username)
+            user_id, group_id = _create_user(username, password, salt, token)
+            _create_home_directory(username, user_id, group_id)
 
         except Exception as e:
             print(str(e))
