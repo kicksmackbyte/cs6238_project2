@@ -150,12 +150,26 @@ def _generate_user_id():
 
         for line in password_file:
             entries = line.split(':')
-            last_user_id = int(entries[3])
+            last_user_id = int(entries[2])
 
             while (last_user_id >= user_id) and (last_user_id < 65534):
                 user_id = last_user_id + 1
 
         return user_id
+
+
+def _generate_group_id():
+    with open(PASSWORD_FILE_PATH, 'r') as password_file:
+        group_id = 1000
+
+        for line in password_file:
+            entries = line.split(':')
+            last_group_id = int(entries[3])
+
+            while (last_group_id >= group_id) and (last_group_id < 65534):
+                group_id = last_group_id + 1
+
+        return group_id
 
 
 def _create_user(username, password, salt, token):
@@ -166,7 +180,7 @@ def _create_user(username, password, salt, token):
         raise Exception(message)
 
     user_id = _generate_user_id()
-    group_id = user_id
+    group_id = _generate_group_id()
 
     _create_shadow_file_entry(username, password, token, salt, user_id, group_id)
     _create_password_file_entry(username, user_id, group_id)
